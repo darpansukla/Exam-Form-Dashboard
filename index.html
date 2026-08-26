@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examination Form Fillup Portal</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #F5F7FA;
+            color: #1D1D1F;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 10px 30px 0 rgba(0, 0, 0, 0.04);
+        }
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        .apple-button {
+            transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        .apple-button:active {
+            transform: scale(0.97);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white">
+
+    <!-- Top Navigation Bar -->
+    <header class="sticky top-0 z-50 glass-nav px-4 lg:px-8 py-3.5 transition-all">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="goScreen1()">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+                    <i data-lucide="graduation-cap" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-semibold tracking-tight text-gray-900">Exam Form Portal</h1>
+                    <p class="text-xs text-gray-500 font-medium">Status & Enrollment Dashboard</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2.5">
+                <button onclick="openAdminModal()" class="apple-button flex items-center space-x-1 px-3.5 py-2 rounded-xl bg-gray-900 text-white text-xs font-medium shadow-sm hover:bg-gray-800">
+                    <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                    <span>Admin Panel</span>
+                </button>
+                <button onclick="loadSheetData()" class="apple-button p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200/60 shadow-sm" title="Sync Data">
+                    <i data-lucide="rotate-cw" class="w-4 h-4" id="refresh-icon"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-6">
+
+        <!-- Loading State -->
+        <div id="loading-state" class="flex flex-col items-center justify-center py-20 space-y-4">
+            <div class="relative w-12 h-12">
+                <div class="absolute inset-0 rounded-full border-4 border-blue-200 animate-pulse"></div>
+                <div class="absolute inset-0 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
+            </div>
+            <p class="text-sm font-medium text-gray-500 animate-pulse">Loading live records...</p>
+        </div>
+
+        <!-- SCREEN 1: Institute Selection & Enrollment Stats -->
+        <div id="screen-1" class="hidden space-y-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="glass-card p-6 rounded-2xl border border-white/80 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Total Students Count:</p>
+                        <h3 id="stat-total-students" class="text-3xl font-bold text-gray-900 mt-1">0</h3>
+                        <p class="text-xs text-emerald-600 mt-1 font-medium flex items-center"><i data-lucide="users" class="w-3.5 h-3.5 mr-1"></i> Active Form Submissions</p>
+                    </div>
+                    <div class="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <i data-lucide="user-check" class="w-7 h-7"></i>
+                    </div>
+                </div>
+
+                <div class="glass-card p-6 rounded-2xl border border-white/80 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Participating Institutions</p>
+                        <h3 id="stat-total-inst" class="text-3xl font-bold text-gray-900 mt-1">0</h3>
+                        <p class="text-xs text-indigo-600 mt-1 font-medium flex items-center"><i data-lucide="building-2" class="w-3.5 h-3.5 mr-1"></i> Colleges & Schools</p>
+                    </div>
+                    <div class="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                        <i data-lucide="landmark" class="w-7 h-7"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Class Wise Enrollment Count Card -->
+            <div class="glass-card p-6 rounded-2xl border border-white/80 shadow-sm space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-base font-semibold text-gray-900 flex items-center">
+                        <i data-lucide="bar-chart-3" class="w-4 h-4 mr-2 text-blue-600"></i> Fine Arts Class-Wise Enrollment
+                    </h2>
+                    <span class="text-xs text-gray-500 font-medium">Distribution across fine arts grades</span>
+                </div>
+                <div id="class-stats-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
+            </div>
+
+            <!-- Choose Institute Section -->
+            <div class="glass-card p-6 rounded-2xl border border-white/80 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-900">Select an Institution</h2>
+                        <p class="text-xs text-gray-500">Click on any institution below to view detailed student records</p>
+                    </div>
+                    <div class="relative w-full sm:w-72">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                            <i data-lucide="search" class="w-4 h-4"></i>
+                        </span>
+                        <input type="text" id="institute-search" onkeyup="filterInstitutions()" placeholder="Search institution..." class="w-full pl-10 pr-4 py-2 bg-white/70 border border-gray-200/80 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm">
+                    </div>
+                </div>
+
+                <div id="institute-cards-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2"></div>
+            </div>
+        </div>
+
+        <!-- SCREEN 2: Institute Detail Tabular View -->
+        <div id="screen-2" class="hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/60 p-4 rounded-2xl border border-white/80 shadow-sm">
+                <div class="flex items-center space-x-3">
+                    <button onclick="goScreen1()" class="w-10 h-10 rounded-xl bg-white hover:bg-gray-100 flex items-center justify-center text-gray-700 border border-gray-200 shadow-sm transition-all">
+                        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                    </button>
+                    <div>
+                        <span class="text-[11px] font-semibold uppercase tracking-wider text-blue-600">Selected Institution</span>
+                        <h2 id="screen2-inst-title" class="text-lg font-bold text-gray-900">Institute Name</h2>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div class="relative w-full sm:w-64">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                            <i data-lucide="search" class="w-4 h-4"></i>
+                        </span>
+                        <input type="text" id="student-search" onkeyup="filterStudentsTable()" placeholder="Search student name..." class="w-full pl-10 pr-4 py-2 bg-white/70 border border-gray-200/80 rounded-xl text-sm focus:outline-none shadow-sm">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabular Data Card -->
+            <div class="glass-card rounded-2xl overflow-hidden border border-white/80 shadow-sm">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div>
+                        <h3 class="font-semibold text-gray-900 text-sm">Fine Arts Student Submissions & Payment Proofs</h3>
+                        <p class="text-xs text-gray-500">Click on any student name to view full details.</p>
+                    </div>
+                    <span id="screen2-count" class="text-xs font-semibold px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full">0 students</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse border border-gray-300">
+                        <thead>
+                            <tr class="bg-gray-50/70 border-b border-gray-300 text-[11px] font-semibold tracking-wider text-gray-500 uppercase">
+                                <th class="py-3 px-4 w-16 border-r border-gray-300">Sr. No.</th>
+                                <th class="py-3 px-4 border-r border-gray-300">Student Name</th>
+                                <th class="py-3 px-4">Class</th>
+                            </tr>
+                        </thead>
+                        <tbody id="screen2-tbody" class="divide-y divide-gray-300 text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Admin Modal (Pin 1998) -->
+    <div id="admin-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm hidden p-4">
+        <div class="glass-card max-w-4xl w-full rounded-3xl overflow-hidden shadow-2xl p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 rounded-lg bg-gray-900 text-white flex items-center justify-center">
+                        <i data-lucide="shield" class="w-4 h-4"></i>
+                    </div>
+                    <h3 class="font-bold text-gray-900 text-base">Admin Dashboard - Master Fine Arts Fee Report</h3>
+                </div>
+                <button onclick="closeAdminModal()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- PIN Input form -->
+            <div id="admin-login-view" class="space-y-4 py-2">
+                <p class="text-xs text-gray-500">Please enter administrator security pin to access collections report.</p>
+                <input type="password" id="admin-pin-input" placeholder="Enter security PIN" class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm text-center tracking-widest font-bold text-lg" maxlength="4">
+                <p id="admin-error" class="text-xs text-red-500 hidden font-medium text-center">Incorrect PIN. Access denied.</p>
+                <button onclick="verifyAdminPin()" class="w-full py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-sm font-medium transition-all shadow-sm">
+                    Authenticate
+                </button>
+            </div>
+
+            <!-- Admin Stats View -->
+            <div id="admin-stats-view" class="hidden space-y-5">
+                <!-- Summary Metrics -->
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div class="bg-gradient-to-tr from-blue-600 to-indigo-600 p-4 rounded-2xl text-white shadow-md">
+                        <p class="text-xs font-medium uppercase tracking-wider text-blue-100">Total Students Count:</p>
+                        <h2 id="admin-total-students-count" class="text-xl font-bold mt-1">0</h2>
+                    </div>
+                    <div class="bg-gradient-to-tr from-emerald-600 to-teal-600 p-4 rounded-2xl text-white shadow-md">
+                        <p class="text-xs font-medium uppercase tracking-wider text-emerald-100">Total Exam Fee Deposited</p>
+                        <h2 id="admin-total-office-deposit" class="text-xl font-bold mt-1">₹0</h2>
+                    </div>
+                    <div class="bg-gradient-to-tr from-amber-600 to-orange-600 p-4 rounded-2xl text-white shadow-md">
+                        <p class="text-xs font-medium uppercase tracking-wider text-amber-100">Total Collected</p>
+                        <h2 id="admin-total-collected" class="text-xl font-bold mt-1">₹0</h2>
+                    </div>
+                    <div class="bg-gradient-to-tr from-purple-600 to-pink-600 p-4 rounded-2xl text-white shadow-md">
+                        <p class="text-xs font-medium uppercase tracking-wider text-purple-100">Total Profit Balance</p>
+                        <h2 id="admin-total-profit" class="text-xl font-bold mt-1">₹0</h2>
+                    </div>
+                </div>
+
+                <!-- Export Button Header -->
+                <div class="flex items-center justify-between pt-2">
+                    <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-500">Master Report of Fine Arts Students</h4>
+                    <button onclick="downloadExcelReport()" class="apple-button flex items-center space-x-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm">
+                        <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                        <span>Download Excel Report (.csv)</span>
+                    </button>
+                </div>
+
+                <!-- Master Student Table with All Borders -->
+                <div class="border border-gray-300 rounded-2xl overflow-hidden bg-white shadow-sm max-h-96 overflow-y-auto">
+                    <table class="w-full text-left border-collapse border border-gray-300">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-300 text-[11px] font-bold tracking-wider text-gray-600 uppercase sticky top-0 z-10">
+                                <th class="py-3 px-3 border-r border-gray-300 w-16">Sr. No.</th>
+                                <th class="py-3 px-3 border-r border-gray-300">Student Name</th>
+                                <th class="py-3 px-3 border-r border-gray-300">Guardian Name</th>
+                                <th class="py-3 px-3 border-r border-gray-300">Class</th>
+                                <th class="py-3 px-3 text-right">Total Exam Fee Deposited (₹)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-master-tbody" class="divide-y divide-gray-300 text-xs"></tbody>
+                        <tfoot>
+                            <tr class="bg-gray-50 border-t-2 border-gray-300 font-bold text-gray-900">
+                                <td colspan="4" class="py-3 px-3 text-right border-r border-gray-300">Total Exam Fee Deposited:</td>
+                                <td id="admin-footer-total-amount" class="py-3 px-3 text-right text-emerald-600 text-sm">₹0</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div>
+                    <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Institute-Wise Breakdown</h4>
+                    <div id="admin-inst-breakdown" class="space-y-3 pr-1"></div>
+                </div>
+
+                <button onclick="closeAdminModal()" class="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-medium">
+                    Close Panel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Proof Modal Viewer -->
+    <div id="proof-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm hidden p-4 opacity-0 transition-opacity duration-300">
+        <div class="glass-card max-w-lg w-full rounded-3xl overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300" id="modal-container">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white/90">
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <i data-lucide="image" class="w-4 h-4"></i>
+                    </div>
+                    <h3 class="font-semibold text-gray-900 text-base">Payment Proof Viewer</h3>
+                </div>
+                <button onclick="closeProofModal()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div class="p-6 bg-gray-50/50 flex flex-col items-center justify-center">
+                <div id="modal-content-area" class="w-full flex flex-col items-center justify-center"></div>
+            </div>
+            <div class="px-6 py-4 bg-white/90 border-t border-gray-100 flex justify-end">
+                <button onclick="closeProofModal()" class="px-5 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-sm font-medium">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="w-full py-6 mt-12 border-t border-gray-200/60 bg-white/40 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-xs font-medium text-gray-500 tracking-wide">Made by Darpan Sukla</p>
+        </div>
+    </footer>
+
+    <!-- App Logic Script -->
+    <script>
+        const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTREPELA-qDTZPcLuXcsYSTPhd-HLih41DVbMK0Wnsrc3Z6M5WrXZWohvHTiLWES5AvFa6fRzQ7_Ayo/pub?gid=0&single=true&output=csv";
+        let globalData = [];
+        let currentSelectedInstitute = "";
+        let currentEligibleStudentsList = []; // Store filtered master list for report export
+
+        function toProperCase(str) {
+            if (!str) return '';
+            return str.toLowerCase().replace(/(^\w{1})|(\s+\w{1})/g, match => match.toUpperCase());
+        }
+
+        const classFeesMap = {
+            "Prarambhik Part-1 (1st Year)": 750,
+            "Prarambhik Part-2 (2nd Year)": 750,
+            "Chitra Bhushan Part-1 (1st Year)": 850,
+            "Chitra Bhushan Part-2 (2nd Year)": 850,
+            "Chitra Bhushan Final": 950,
+            "Chitra Visharad Part-1 (1st Year)": 1350,
+            "Chitra Visharad Final": 1700
+        };
+
+        function cleanFineArtsClass(className) {
+            if (!className) return "";
+            let lowerCls = className.toLowerCase();
+
+            if (lowerCls.includes('prarambhik')) {
+                if (lowerCls.includes('2') || lowerCls.includes('second')) return "Prarambhik Part-2 (2nd Year)";
+                return "Prarambhik Part-1 (1st Year)";
+            }
+            if (lowerCls.includes('chitra bhushan') || lowerCls.includes('bhushan')) {
+                if (lowerCls.includes('final')) return "Chitra Bhushan Final";
+                if (lowerCls.includes('2') || lowerCls.includes('second')) return "Chitra Bhushan Part-2 (2nd Year)";
+                return "Chitra Bhushan Part-1 (1st Year)";
+            }
+            if (lowerCls.includes('visharad')) {
+                if (lowerCls.includes('final')) return "Chitra Visharad Final";
+                return "Chitra Visharad Part-1 (1st Year)";
+            }
+            
+            return ""; 
+        }
+
+        function getStandardFee(className) {
+            let standardizedClass = cleanFineArtsClass(className);
+            return classFeesMap[standardizedClass] || 0;
+        }
+
+        window.addEventListener('DOMContentLoaded', loadSheetData);
+
+        function loadSheetData() {
+            const refreshIcon = document.getElementById('refresh-icon');
+            if (refreshIcon) refreshIcon.classList.add('animate-spin');
+
+            Papa.parse(CSV_URL, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+                    
+                    globalData = results.data.map(row => {
+                        let cleaned = {};
+                        for (let key in row) {
+                            let val = row[key] ? row[key].trim() : '';
+                            if (key.trim() === "Student Name" || key.trim() === "Guardian Name" || key.trim() === "Institution") {
+                                cleaned[key.trim()] = toProperCase(val);
+                            } else if (key.trim() === "Class") {
+                                cleaned[key.trim()] = cleanFineArtsClass(val);
+                            } else {
+                                cleaned[key.trim()] = val;
+                            }
+                        }
+                        return cleaned;
+                    }).filter(row => getStandardFee(row["Class"]) > 0);
+
+                    document.getElementById('loading-state').classList.add('hidden');
+                    goScreen1();
+                    lucide.createIcons();
+                },
+                error: function() {
+                    if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+                    document.getElementById('loading-state').innerHTML = `<p class="text-red-500 text-sm font-medium text-center">Failed to load Google Sheet data. Please check connection.</p>`;
+                }
+            });
+        }
+
+        function goScreen1() {
+            document.getElementById('screen-2').classList.add('hidden');
+            document.getElementById('screen-1').classList.remove('hidden');
+            renderScreen1(globalData);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function renderScreen1(data) {
+            document.getElementById('stat-total-students').innerText = data.length;
+            const institutions = [...new Set(data.map(i => i["Institution"]).filter(Boolean))].sort();
+            document.getElementById('stat-total-inst').innerText = institutions.length;
+
+            let classCounts = {};
+            data.forEach(row => {
+                let cls = row["Class"] || "Unspecified";
+                classCounts[cls] = (classCounts[cls] || 0) + 1;
+            });
+
+            let classGrid = document.getElementById('class-stats-grid');
+            classGrid.innerHTML = '';
+            for (let [cls, count] of Object.entries(classCounts)) {
+                classGrid.innerHTML += `
+                    <div class="bg-gray-50/80 border border-gray-200/70 p-4 rounded-xl flex items-center justify-between shadow-xs">
+                        <span class="text-xs font-bold text-gray-800 break-words pr-2">${cls}</span>
+                        <span class="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-extrabold shrink-0">${count}</span>
+                    </div>
+                `;
+            }
+
+            renderInstituteCards(institutions, data);
+        }
+
+        function renderInstituteCards(institutions, data) {
+            let container = document.getElementById('institute-cards-grid');
+            container.innerHTML = '';
+
+            institutions.forEach(inst => {
+                let instStudents = data.filter(i => i["Institution"] === inst);
+
+                container.innerHTML += `
+                    <div onclick="openInstituteScreen('${inst.replace(/'/g, "\\'")}')" class="glass-card p-5 rounded-2xl border border-white/80 shadow-sm hover:shadow-md cursor-pointer transition-all group flex flex-col justify-between space-y-4">
+                        <div class="flex items-start justify-between">
+                            <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <i data-lucide="building" class="w-5 h-5"></i>
+                            </div>
+                            <span class="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold">${instStudents.length} Students</span>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-gray-900 text-base group-hover:text-blue-600 transition-colors">${inst}</h3>
+                        </div>
+                        <div class="flex items-center text-xs font-medium text-blue-600 pt-2 border-t border-gray-100">
+                            <span>View student submissions</span>
+                            <i data-lucide="chevron-right" class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform"></i>
+                        </div>
+                    </div>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        function filterInstitutions() {
+            let query = document.getElementById('institute-search').value.toLowerCase();
+            let institutions = [...new Set(globalData.map(i => i["Institution"]).filter(Boolean))].sort();
+            let filtered = institutions.filter(i => i.toLowerCase().includes(query));
+            renderInstituteCards(filtered, globalData);
+        }
+
+        function openInstituteScreen(instituteName) {
+            currentSelectedInstitute = instituteName;
+            document.getElementById('screen-1').classList.add('hidden');
+            document.getElementById('screen-2').classList.remove('hidden');
+            document.getElementById('screen2-inst-title').innerText = instituteName;
+            document.getElementById('student-search').value = '';
+
+            let filteredStudents = globalData.filter(i => i["Institution"] === instituteName);
+            renderScreen2Table(filteredStudents);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function renderScreen2Table(data) {
+            let tbody = document.getElementById('screen2-tbody');
+            let countSpan = document.getElementById('screen2-count');
+            tbody.innerHTML = '';
+            countSpan.innerText = data.length + (data.length === 1 ? ' student' : ' students');
+
+            data.forEach((row, index) => {
+                let receiptNo = row["Receipt No"] || "N/A";
+                let dateTime = row["Date & Time"] || row["Timestamp"] || "-";
+                let studentName = row["Student Name"] || "-";
+                let guardianName = row["Guardian Name"] || "-";
+                let whatsapp = row["WhatsApp"] || "-";
+                let studentClass = row["Class"] || "-";
+                let paymentMode = row["Payment Mode"] || "-";
+                let amount = row["Amount"] || "-";
+                let proofLink = row["Payment Proof Link"] || "";
+
+                let formattedAmount = amount;
+                if (!isNaN(amount.replace(/[^0-9.]/g, '')) && amount.trim() !== '') {
+                    formattedAmount = '₹' + parseFloat(amount.replace(/[^0-9.]/g, '')).toLocaleString('en-IN');
+                }
+
+                let whatsappHtml = whatsapp !== '-' ? 
+                    `<a href="https://wa.me/${whatsapp.replace(/[^0-9]/g, '')}" target="_blank" class="inline-flex items-center space-x-1 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg text-xs font-medium">
+                        <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>
+                        <span>${whatsapp}</span>
+                    </a>` : '-';
+
+                let proofHtml = '<span class="text-gray-400 text-xs italic">No Proof</span>';
+                if (proofLink) {
+                    proofHtml = `
+                        <button onclick='openProofModal(${JSON.stringify(proofLink)}, ${JSON.stringify(studentName)}, ${JSON.stringify(receiptNo)})' class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-medium transition-all shadow-sm">
+                            <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                            <span>View Proof</span>
+                        </button>
+                    `;
+                }
+
+                let rowId = `student-details-${index}`;
+
+                let tr = document.createElement('tr');
+                tr.className = "hover:bg-blue-50/20 transition-colors cursor-pointer border-b border-gray-300";
+                tr.onclick = function(e) {
+                    let detailRow = document.getElementById(rowId);
+                    if (detailRow.classList.contains('hidden')) {
+                        detailRow.classList.remove('hidden');
+                    } else {
+                        detailRow.classList.add('hidden');
+                    }
+                };
+
+                tr.innerHTML = `
+                    <td class="py-3.5 px-4 font-semibold text-gray-500 text-xs border-r border-gray-300">${index + 1}</td>
+                    <td class="py-3.5 px-4 border-r border-gray-300">
+                        <div class="font-bold text-gray-900 text-sm flex items-center justify-between">
+                            <span>${studentName}</span>
+                            <span class="text-xs text-blue-600 font-medium ml-2 flex items-center">Tap to view details <i data-lucide="chevron-down" class="w-3.5 h-3.5 ml-1"></i></span>
+                        </div>
+                    </td>
+                    <td class="py-3.5 px-4">
+                        <span class="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs font-medium">${studentClass}</span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+
+                let detailTr = document.createElement('tr');
+                detailTr.id = rowId;
+                detailTr.className = "hidden bg-gray-50/80 border-b border-gray-300";
+                detailTr.innerHTML = `
+                    <td colspan="3" class="p-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-3 bg-white rounded-xl border border-gray-300 shadow-xs">
+                            <div>
+                                <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Guardian Name</p>
+                                <p class="text-xs font-semibold text-gray-800 mt-0.5">${guardianName}</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">WhatsApp No.</p>
+                                <p class="text-xs font-semibold text-gray-800 mt-0.5">${whatsappHtml}</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Receipt & Date/Timestamp</p>
+                                <p class="text-xs font-semibold text-gray-800 mt-0.5">${receiptNo} (${dateTime})</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Payment (${paymentMode})</p>
+                                <p class="text-xs font-bold text-emerald-600 mt-0.5">${formattedAmount}</p>
+                            </div>
+                            <div class="sm:col-span-2 lg:col-span-4 pt-2 border-t border-gray-200 flex items-center justify-between">
+                                <span class="text-xs text-gray-500 font-medium">Payment Proof Document/Image:</span>
+                                <div>${proofHtml}</div>
+                            </div>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(detailTr);
+            });
+            lucide.createIcons();
+        }
+
+        function filterStudentsTable() {
+            let query = document.getElementById('student-search').value.toLowerCase();
+            let instStudents = globalData.filter(i => i["Institution"] === currentSelectedInstitute);
+            let filtered = instStudents.filter(row => {
+                let name = (row["Student Name"] || "").toLowerCase();
+                let guardian = (row["Guardian Name"] || "").toLowerCase();
+                let receipt = (row["Receipt No"] || "").toLowerCase();
+                return name.includes(query) || guardian.includes(query) || receipt.includes(query);
+            });
+            renderScreen2Table(filtered);
+        }
+
+        // Admin Modal Logic
+        function openAdminModal() {
+            document.getElementById('admin-pin-input').value = '';
+            document.getElementById('admin-error').classList.add('hidden');
+            document.getElementById('admin-login-view').classList.remove('hidden');
+            document.getElementById('admin-stats-view').classList.add('hidden');
+            document.getElementById('admin-modal').classList.remove('hidden');
+        }
+
+        function closeAdminModal() {
+            document.getElementById('admin-modal').classList.add('hidden');
+        }
+
+        function verifyAdminPin() {
+            let pin = document.getElementById('admin-pin-input').value;
+            if (pin === "1998") {
+                document.getElementById('admin-error').classList.add('hidden');
+                document.getElementById('admin-login-view').classList.add('hidden');
+                document.getElementById('admin-stats-view').classList.remove('hidden');
+                populateAdminStats();
+            } else {
+                document.getElementById('admin-error').classList.remove('hidden');
+            }
+        }
+
+        function populateAdminStats() {
+            let totalCollected = 0;
+            let totalOfficeDeposit = 0;
+            let totalProfit = 0;
+            let totalGlobalRefund = 0;
+            currentEligibleStudentsList = [];
+
+            // First, calculate global totals including refunds subtracted
+            let institutions = [...new Set(globalData.map(i => i["Institution"]).filter(Boolean))].sort();
+
+            globalData.forEach(row => {
+                let standardFee = getStandardFee(row["Class"]);
+                if (standardFee > 0) {
+                    let rawAmt = parseFloat((row["Amount"] || "").replace(/[^0-9.]/g, '')) || 0;
+                    totalCollected += rawAmt;
+                    totalOfficeDeposit += standardFee;
+
+                    currentEligibleStudentsList.push({
+                        institution: row["Institution"] || "Unspecified",
+                        studentName: row["Student Name"] || "-",
+                        guardianName: row["Guardian Name"] || "-",
+                        class: row["Class"] || "-",
+                        feeAmount: standardFee,
+                        rawCollected: rawAmt
+                    });
+                }
+            });
+
+            // Calculate total global refund for Sitroban or similar institutions (₹200 per student)
+            institutions.forEach(inst => {
+                let instStudents = currentEligibleStudentsList.filter(i => i.institution === inst);
+                if (inst.toLowerCase().includes("sitroban")) {
+                    totalGlobalRefund += (instStudents.length * 200);
+                }
+            });
+
+            // Final Profit Balance = Total Collected - Total Office Deposit - Total Refund
+            totalProfit = totalCollected - totalOfficeDeposit - totalGlobalRefund;
+
+            document.getElementById('admin-total-students-count').innerText = currentEligibleStudentsList.length;
+            document.getElementById('admin-total-office-deposit').innerText = '₹' + totalOfficeDeposit.toLocaleString('en-IN');
+            document.getElementById('admin-total-collected').innerText = '₹' + totalCollected.toLocaleString('en-IN');
+            document.getElementById('admin-total-profit').innerText = '₹' + totalProfit.toLocaleString('en-IN');
+            document.getElementById('admin-footer-total-amount').innerText = '₹' + totalOfficeDeposit.toLocaleString('en-IN');
+
+            let masterTbody = document.getElementById('admin-master-tbody');
+            masterTbody.innerHTML = '';
+
+            currentEligibleStudentsList.forEach((item, index) => {
+                masterTbody.innerHTML += `
+                    <tr class="hover:bg-gray-50/80 transition-colors border-b border-gray-300">
+                        <td class="py-2.5 px-3 font-semibold text-gray-500 border-r border-gray-300">${index + 1}</td>
+                        <td class="py-2.5 px-3 font-bold text-gray-900 border-r border-gray-300">${item.studentName}</td>
+                        <td class="py-2.5 px-3 text-gray-700 border-r border-gray-300">${item.guardianName}</td>
+                        <td class="py-2.5 px-3 border-r border-gray-300"><span class="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[11px] font-semibold">${item.class}</span></td>
+                        <td class="py-2.5 px-3 text-right font-bold text-emerald-600">₹${item.feeAmount.toLocaleString('en-IN')}</td>
+                    </tr>
+                `;
+            });
+
+            let breakdownContainer = document.getElementById('admin-inst-breakdown');
+            breakdownContainer.innerHTML = '';
+
+            institutions.forEach(inst => {
+                let instStudents = currentEligibleStudentsList.filter(i => i.institution === inst);
+                let instOfficeDeposit = instStudents.reduce((sum, i) => sum + i.feeAmount, 0);
+                let instCollected = instStudents.reduce((sum, i) => sum + i.rawCollected, 0);
+                let instRefundTotal = inst.toLowerCase().includes("sitroban") ? (instStudents.length * 200) : 0;
+                let instProfit = instCollected - instOfficeDeposit - instRefundTotal;
+
+                let sitrobanExtraHtml = '';
+                if (inst.toLowerCase().includes("sitroban")) {
+                    sitrobanExtraHtml = `
+                        <div class="mt-2 pt-2 border-t border-gray-200 grid grid-cols-3 gap-2 text-center text-[11px]">
+                            <div class="bg-amber-50 p-1.5 rounded-lg border border-amber-200">
+                                <span class="text-amber-700 font-semibold block">Refund Total</span>
+                                <span class="font-bold text-amber-900">₹${instRefundTotal.toLocaleString('en-IN')}</span>
+                            </div>
+                            <div class="bg-blue-50 p-1.5 rounded-lg border border-blue-200">
+                                <span class="text-blue-700 font-semibold block">Office Deposit</span>
+                                <span class="font-bold text-blue-900">₹${instOfficeDeposit.toLocaleString('en-IN')}</span>
+                            </div>
+                            <div class="bg-emerald-50 p-1.5 rounded-lg border border-emerald-200">
+                                <span class="text-emerald-700 font-semibold block">Profit Balance</span>
+                                <span class="font-bold text-emerald-900">₹${instProfit.toLocaleString('en-IN')}</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    sitrobanExtraHtml = `
+                        <div class="mt-2 pt-2 border-t border-gray-200 grid grid-cols-2 gap-2 text-center text-[11px]">
+                            <div class="bg-blue-50 p-1.5 rounded-lg border border-blue-200">
+                                <span class="text-blue-700 font-semibold block">Office Deposit</span>
+                                <span class="font-bold text-blue-900">₹${instOfficeDeposit.toLocaleString('en-IN')}</span>
+                            </div>
+                            <div class="bg-emerald-50 p-1.5 rounded-lg border border-emerald-200">
+                                <span class="text-emerald-700 font-semibold block">Profit Balance</span>
+                                <span class="font-bold text-emerald-900">₹${instProfit.toLocaleString('en-IN')}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                breakdownContainer.innerHTML += `
+                    <div class="p-3 bg-gray-50 border border-gray-300 rounded-xl space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-gray-900">${inst} (${instStudents.length} eligible students)</span>
+                            <span class="text-xs font-bold text-gray-800 bg-white px-2.5 py-1 rounded-lg border border-gray-300">Total Collection: ₹${instCollected.toLocaleString('en-IN')}</span>
+                        </div>
+                        ${sitrobanExtraHtml}
+                    </div>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        function downloadExcelReport() {
+            if (currentEligibleStudentsList.length === 0) {
+                alert("No student records available to export.");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Sr. No.,Student Name,Guardian Name,Class,Total Exam Fee Deposited (INR)\r\n";
+
+            let totalDepositSum = 0;
+            currentEligibleStudentsList.forEach((item, index) => {
+                let row = [
+                    index + 1,
+                    `"${item.studentName.replace(/"/g, '""')}"`,
+                    `"${item.guardianName.replace(/"/g, '""')}"`,
+                    `"${item.class.replace(/"/g, '""')}"`,
+                    item.feeAmount
+                ];
+                csvContent += row.join(",") + "\r\n";
+                totalDepositSum += item.feeAmount;
+            });
+
+            csvContent += "\r\n";
+            csvContent += `,,,Total Students Count:,${currentEligibleStudentsList.length}\r\n`;
+            csvContent += `,,,Total Exam Fee Deposited:,${totalDepositSum}\r\n`;
+
+            let encodedUri = encodeURI(csvContent);
+            let link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Fine_Arts_Exam_Fee_Report_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function openProofModal(url, studentName, receiptNo) {
+            const modal = document.getElementById('proof-modal');
+            const container = document.getElementById('modal-content-area');
+            
+            let embedUrl = url;
+            if (url.includes('drive.google.com/file/d/')) {
+                let match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+                if (match && match[1]) embedUrl = `https://drive.google.com/file/d/${match[1]}/preview`;
+            }
+
+            container.innerHTML = `
+                <div class="w-full text-center space-y-3">
+                    <div class="text-xs font-semibold text-gray-500">Student: <span class="text-gray-900">${studentName}</span> | Receipt: <span class="text-gray-900">${receiptNo}</span></div>
+                    <div class="w-full bg-white rounded-2xl overflow-hidden border border-gray-200/80 p-2 flex items-center justify-center" style="min-height: 300px;">
+                        ${embedUrl.includes('preview') || embedUrl.includes('drive.google.com') ? 
+                            `<iframe src="${embedUrl}" class="w-full h-80 rounded-xl border-0"></iframe>` :
+                            `<img src="${embedUrl}" alt="Payment Proof" class="max-h-80 mx-auto rounded-xl object-contain">`
+                        }
+                    </div>
+                    <a href="${url}" target="_blank" class="inline-flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-700 font-medium">
+                        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                        <span>Open original proof link in new tab</span>
+                    </a>
+                </div>
+            `;
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                document.getElementById('modal-container').classList.remove('scale-95');
+                document.getElementById('modal-container').classList.add('scale-100');
+            }, 10);
+            lucide.createIcons();
+        }
+
+        function closeProofModal() {
+            const modal = document.getElementById('proof-modal');
+            modal.classList.add('opacity-0');
+            document.getElementById('modal-container').classList.remove('scale-100');
+            document.getElementById('modal-container').classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+    </script>
+</body>
+</html>
