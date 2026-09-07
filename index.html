@@ -321,40 +321,21 @@
             return str.toLowerCase().replace(/(^\w{1})|(\s+\w{1})/g, match => match.toUpperCase());
         }
 
-        const classFeesMap = {
-            "Prarambhik Part-1 (1st Year)": 750,
-            "Prarambhik Part-2 (2nd Year)": 750,
-            "Chitra Bhushan Part-1 (1st Year)": 850,
-            "Chitra Bhushan Part-2 (2nd Year)": 850,
-            "Chitra Bhushan Final": 950,
-            "Chitra Visharad Part-1 (1st Year)": 1350,
-            "Chitra Visharad Final": 1700
-        };
-
-        function cleanFineArtsClass(className) {
-            if (!className) return "";
+        // Dynamic fee fallback map based on text keyword matches if exact fee isn't found
+        function getStandardFee(className) {
+            if (!className) return 0;
             let lowerCls = className.toLowerCase();
 
-            if (lowerCls.includes('prarambhik')) {
-                if (lowerCls.includes('2') || lowerCls.includes('second')) return "Prarambhik Part-2 (2nd Year)";
-                return "Prarambhik Part-1 (1st Year)";
-            }
+            if (lowerCls.includes('prarambhik')) return 750;
             if (lowerCls.includes('chitra bhushan') || lowerCls.includes('bhushan')) {
-                if (lowerCls.includes('final')) return "Chitra Bhushan Final";
-                if (lowerCls.includes('2') || lowerCls.includes('second')) return "Chitra Bhushan Part-2 (2nd Year)";
-                return "Chitra Bhushan Part-1 (1st Year)";
+                if (lowerCls.includes('final')) return 950;
+                return 850;
             }
             if (lowerCls.includes('visharad')) {
-                if (lowerCls.includes('final')) return "Chitra Visharad Final";
-                return "Chitra Visharad Part-1 (1st Year)";
+                if (lowerCls.includes('final')) return 1700;
+                return 1350;
             }
-            
-            return ""; 
-        }
-
-        function getStandardFee(className) {
-            let standardizedClass = cleanFineArtsClass(className);
-            return classFeesMap[standardizedClass] || 0;
+            return 500; // Default fallback fee for any other exact custom class name
         }
 
         window.addEventListener('DOMContentLoaded', loadSheetData);
@@ -377,13 +358,14 @@
                             if (key.trim() === "Student Name" || key.trim() === "Guardian Name" || key.trim() === "Institution") {
                                 cleaned[key.trim()] = toProperCase(val);
                             } else if (key.trim() === "Class") {
-                                cleaned[key.trim()] = cleanFineArtsClass(val);
+                                // Keeps exact class name from sheet, trimmed and preserved
+                                cleaned[key.trim()] = val;
                             } else {
                                 cleaned[key.trim()] = val;
                             }
                         }
                         return cleaned;
-                    }).filter(row => getStandardFee(row["Class"]) > 0);
+                    }).filter(row => row["Class"] && row["Class"] !== "");
 
                     document.getElementById('loading-state').classList.add('hidden');
                     goScreen1();
@@ -621,20 +603,18 @@
 
             globalData.forEach(row => {
                 let standardFee = getStandardFee(row["Class"]);
-                if (standardFee > 0) {
-                    let rawAmt = parseFloat((row["Amount"] || "").replace(/[^0-9.]/g, '')) || 0;
-                    totalCollected += rawAmt;
-                    totalOfficeDeposit += standardFee;
+                let rawAmt = parseFloat((row["Amount"] || "").replace(/[^0-9.]/g, '')) || 0;
+                totalCollected += rawAmt;
+                totalOfficeDeposit += standardFee;
 
-                    currentEligibleStudentsList.push({
-                        institution: row["Institution"] || "Unspecified",
-                        studentName: row["Student Name"] || "-",
-                        guardianName: row["Guardian Name"] || "-",
-                        class: row["Class"] || "-",
-                        feeAmount: standardFee,
-                        rawCollected: rawAmt
-                    });
-                }
+                currentEligibleStudentsList.push({
+                    institution: row["Institution"] || "Unspecified",
+                    studentName: row["Student Name"] || "-",
+                    guardianName: row["Guardian Name"] || "-",
+                    class: row["Class"] || "-",
+                    feeAmount: standardFee,
+                    rawCollected: rawAmt
+                });
             });
 
             institutions.forEach(inst => {
