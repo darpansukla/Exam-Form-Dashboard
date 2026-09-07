@@ -321,21 +321,20 @@
             return str.toLowerCase().replace(/(^\w{1})|(\s+\w{1})/g, match => match.toUpperCase());
         }
 
-        // Dynamic fee fallback map based on text keyword matches if exact fee isn't found
+        // Exact configured fee mapping based on your specific class table criteria
         function getStandardFee(className) {
             if (!className) return 0;
-            let lowerCls = className.toLowerCase();
+            let lowerCls = className.toLowerCase().replace(/\s+/g, '');
 
-            if (lowerCls.includes('prarambhik')) return 750;
-            if (lowerCls.includes('chitra bhushan') || lowerCls.includes('bhushan')) {
-                if (lowerCls.includes('final')) return 950;
-                return 850;
-            }
-            if (lowerCls.includes('visharad')) {
-                if (lowerCls.includes('final')) return 1700;
-                return 1350;
-            }
-            return 500; // Default fallback fee for any other exact custom class name
+            if (lowerCls.includes('prarambhikpart-1') || lowerCls.includes('pp-i')) return 750;
+            if (lowerCls.includes('prarambhikpart-2') || lowerCls.includes('pp-ii')) return 750;
+            if (lowerCls.includes('chitrabhushanpart-1') || lowerCls.includes('1styr')) return 850;
+            if (lowerCls.includes('chitrabhushanpart-2') || lowerCls.includes('2ndyr')) return 850;
+            if (lowerCls.includes('chitrabhushanfinal') || lowerCls.includes('3rdyr')) return 950;
+            if (lowerCls.includes('chitravisharadpart-1') || lowerCls.includes('4thyr')) return 1350;
+            if (lowerCls.includes('chitravisharadfinal') || lowerCls.includes('5thyr')) return 1700;
+            
+            return 0; // Classes not matching the explicit list will count as 0 for exam fee deposited
         }
 
         window.addEventListener('DOMContentLoaded', loadSheetData);
@@ -358,8 +357,8 @@
                             if (key.trim() === "Student Name" || key.trim() === "Guardian Name" || key.trim() === "Institution") {
                                 cleaned[key.trim()] = toProperCase(val);
                             } else if (key.trim() === "Class") {
-                                // Keeps exact class name from sheet, trimmed and preserved
-                                cleaned[key.trim()] = val;
+                                // Removes strings formatted like "(Class VI)" or "(Class 6)" from the end of the class name string
+                                cleaned[key.trim()] = val.replace(/\s*\([^)]*class[^)]*\)/gi, '').trim();
                             } else {
                                 cleaned[key.trim()] = val;
                             }
@@ -624,6 +623,7 @@
                 }
             });
 
+            // Total Profit Balance = Total Collected - Total Office Deposit - Sitroban Refunds
             totalProfit = totalCollected - totalOfficeDeposit - totalGlobalRefund;
 
             document.getElementById('admin-total-students-count').innerText = currentEligibleStudentsList.length;
