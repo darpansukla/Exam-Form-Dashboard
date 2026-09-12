@@ -63,6 +63,11 @@
             </div>
 
             <div class="flex items-center space-x-2 shrink-0">
+                <!-- Added Link to New Students Registration Database -->
+                <a href="https://darpansukla.github.io/New-Students-Registration-Database/" target="_blank" class="apple-button flex items-center space-x-1 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium shadow-sm" title="Check New Students Database">
+                    <i data-lucide="database" class="w-3.5 h-3.5"></i>
+                    <span class="hidden sm:inline">Database</span>
+                </a>
                 <button onclick="openAdminModal()" class="apple-button flex items-center space-x-1 px-3 py-2 rounded-xl bg-gray-900 text-white text-xs font-medium shadow-sm hover:bg-gray-800">
                     <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
                     <span class="hidden xs:inline">Admin Panel</span>
@@ -482,7 +487,7 @@
                     `<a href="https://wa.me/${whatsapp.replace(/[^0-9]/g, '')}" target="_blank" class="inline-flex items-center space-x-1 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg text-xs font-medium">
                         <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>
                         <span>${whatsapp}</span>
-                    </a>` : '-';
+                    ` : '-';
 
                 let proofHtml = '<span class="text-gray-400 text-xs italic">No Proof</span>';
                 if (proofLink) {
